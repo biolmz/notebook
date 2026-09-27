@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>线性混合模型笔记：为什么重复测量不能直接跑 t 检验 · 笔记</title>
+<meta name="description" content="从同一只小鼠测三次这个场景出发，理清固定效应、随机效应和 ICC。">
+<meta name="color-scheme" content="light dark">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23F5F6F4'/%3E%3Crect x='7' y='7' width='4' height='18' rx='1' fill='%233D8F5E'/%3E%3Crect x='14' y='7' width='4' height='11' rx='1' fill='%23C25B50'/%3E%3Crect x='21' y='7' width='4' height='15' rx='1' fill='%233E6DB5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/style.css">
+
+<script>
+  try {
+    if (localStorage.getItem('mnz-theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+
+<body class="note-page">
+<a class="skip-link" href="#content">跳到正文</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../index.html">刘铭哲 <span class="brand-en">notebooks</span></a>
+    <span class="topbar-spacer"></span>
+    <a class="topbar-link" href="../../index.html">← 笔记索引</a>
+    <button class="theme-btn" type="button" aria-label="切换深色 / 浅色" aria-pressed="false" title="切换深色 / 浅色">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>
+      </svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main class="wrap-note" id="content">
+  <article>
+    <div class="note-head">
+      <h1>线性混合模型笔记：为什么重复测量不能直接跑 t 检验</h1>
+      <div class="note-meta">
+        <span class="date">2026-04-19</span>
+        <span class="topic" data-topic="统计"><i></i>统计</span>
+        <span class="tags">线性混合模型，lme4，重复测量</span>
+      </div>
+      <div class="note-rule"></div>
+    </div>
+
+    <div class="prose">
+
+      <p>
+        起因是把一个实验的数据直接拿去做 t 检验，被指出犯了“伪重复”（pseudoreplication）的错。
+        这篇把当时没想通的地方重新推一遍，顺便对比 R 和 Python 两套写法。
+      </p>
+
+      <h2>场景</h2>
+
+      <p>
+        12 只小鼠，随机分两组（给药 / 对照），每只小鼠在第 0、7、14 天各测一次体重。
+        总共 36 个观测值，但独立个体只有 12 个 —— 同一只小鼠的三次测量之间天然相关，
+        它自己的基线在哪儿，很大程度上决定了后面三次都在哪儿。
+      </p>
+
+      <p>
+        如果把这 36 个观测当成 36 个独立样本跑 t 检验，标准误会被低估，
+        p 值偏小，看起来“显著”的差异可能只是个体差异被当成了组间差异。
+        数据点个数没变，信息量却虚高了。
+      </p>
+
+      <h2>固定效应和随机效应的区别</h2>
+
+      <p>
+        判断一个因子该放哪边，我的记法是：<em>取值本身是否被我们穷举、而且每个水平都要单独解释</em>，
+        是固定效应；<em>只是从一个更大的总体里抽样出来的、我们不关心每个水平具体是多少</em>，是随机效应。
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>因子</th><th>类型</th><th>理由</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>处理组（给药 / 对照）</td><td>固定效应</td><td>只有这两个水平，每个都要报告效应大小</td></tr>
+          <tr><td>时间（0 / 7 / 14 天）</td><td>固定效应</td><td>三个时间点是设计好的，不是抽样得到的</td></tr>
+          <tr><td>小鼠个体</td><td>随机效应</td><td>12 只是从更大的种群抽的，只是要吸收掉个体差异</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        随机效应把“每只小鼠有自己的基线偏移”这件事显式写进模型，
+        这样这部分变异就不会被错误地算进误差项里。
+      </p>
+
+      <h2>R：lme4</h2>
+
+      <div class="nb-cell nb-in">
+        <div class="nb-prompt">In [5]</div>
+        <div class="nb-body">
+          <pre class="nb-code"><code><span class="tok-k">library</span><span class="tok-o">(</span>lme4<span class="tok-o">)</span>
+
+<span class="tok-c"># (1 | mouse) 表示“每只小鼠一个随机截距”，斜率共用</span>
+m1 <span class="tok-o">&lt;-</span> lmer<span class="tok-o">(</span>weight <span class="tok-o">~</span> treatment <span class="tok-o">*</span> day <span class="tok-o">+</span> <span class="tok-o">(</span><span class="tok-n">1</span> <span class="tok-o">|</span> mouse<span class="tok-o">)</span>, data <span class="tok-o">=</span> d<span class="tok-o">)</span>
+summary<span class="tok-o">(</span>m1<span class="tok-o">)</span>
+
+<span class="tok-c"># 固定效应的 p 值：lme4 本身不给，要靠 lmerTest 的 Satterthwaite 近似自由度</span>
+<span class="tok-k">library</span><span class="tok-o">(</span>lmerTest<span class="tok-o">)</span>
+summary<span class="tok-o">(</span><span class="tok-k">as</span><span class="tok-o">(</span>m1, <span class="tok-s">"lmerModLmerTest"</span><span class="tok-o">)</span><span class="tok-o">)</span></code></pre>
+        </div>
+      </div>
+
+      <div class="nb-cell nb-out">
+        <div class="nb-prompt">Out[5]</div>
+        <div class="nb-body">
+          <pre class="nb-out">Random effects:
+ Groups   Name        Variance  Std.Dev.
+ mouse    (Intercept)  8.417     2.901
+ Residual              1.229     1.109
+Number of obs: 36, groups: mouse, 12
+
+Fixed effects:
+                    Estimate  Std.Error    df  t value
+(Intercept)          24.8132     0.9013  10.0   27.53
+treatmentdrug        -0.4417     1.2747  10.0   -0.35
+day                   0.1651     0.0584  22.0    2.83</pre>
+        </div>
+      </div>
+
+      <p>
+        随机截距的方差 8.417 比残差 1.229 大好几倍，说明个体差异本来就是数据的最大来源之一。
+        把它放进随机效应之后，处理组的效应就不显著了（t ≈ -0.35）—— 和一开始直接做 t 检验的结论相反。
+      </p>
+
+      <h2>Python：statsmodels</h2>
+
+      <div class="nb-cell nb-in">
+        <div class="nb-prompt">In [7]</div>
+        <div class="nb-body">
+          <pre class="nb-code"><code><span class="tok-k">import</span> statsmodels.formula.api <span class="tok-k">as</span> smf
+
+<span class="tok-c"># groups 指定随机截距的分组变量，vc_formula 默认就是一个随机截距</span>
+m2 <span class="tok-o">=</span> smf<span class="tok-o">.</span>mixedlm<span class="tok-o">(</span><span class="tok-s">"weight ~ treatment * day"</span>, d, groups<span class="tok-o">=</span>d<span class="tok-o">[</span><span class="tok-s">"mouse"</span><span class="tok-o">]</span><span class="tok-o">)</span><span class="tok-o">.</span>fit<span class="tok-o">(</span>reml<span class="tok-o">=</span><span class="tok-k">True</span><span class="tok-o">)</span>
+<span class="tok-k">print</span><span class="tok-o">(</span>m2<span class="tok-o">.</span>summary<span class="tok-o">(</span><span class="tok-o">)</span><span class="tok-o">)</span>
+
+<span class="tok-c"># 组内相关系数：个体差异占总变异的比例</span>
+icc <span class="tok-o">=</span> m2<span class="tok-o">.</span>cov_re<span class="tok-o">.</span>values<span class="tok-o">[</span><span class="tok-n">0</span><span class="tok-o">,</span> <span class="tok-n">0</span><span class="tok-o">]</span> <span class="tok-o">/</span> <span class="tok-o">(</span>m2<span class="tok-o">.</span>cov_re<span class="tok-o">.</span>values<span class="tok-o">[</span><span class="tok-n">0</span><span class="tok-o">,</span> <span class="tok-n">0</span><span class="tok-o">]</span> <span class="tok-o">+</span> m2<span class="tok-o">.</span>scale<span class="tok-o">)</span>
+<span class="tok-k">print</span><span class="tok-o">(</span><span class="tok-s">f"ICC = {icc:.3f}"</span><span class="tok-o">)</span></code></pre>
+        </div>
+      </div>
+
+      <div class="nb-cell nb-out">
+        <div class="nb-prompt">Out[7]</div>
+        <div class="nb-body">
+          <pre class="nb-out">ICC = 0.873</pre>
+        </div>
+      </div>
+
+      <p>
+        ICC ≈ 0.87 意味着个体之间的差异解释了约 87% 的总变异。
+        换句话说不考虑个体差异的话，几乎就是在测“哪只小鼠”，而不是“药物有没有用”。
+      </p>
+
+      <h2>还没想明白的</h2>
+
+      <ul>
+        <li>
+          <strong>随机截距还是随机斜率。</strong>
+          现在的模型假设所有小鼠的体重随时间变化速度一样（斜率共用）。
+          如果某些小鼠长得快、某些长得慢，就该写 <code>(day | mouse)</code>。
+          但加了随机斜率之后参数变多，数据只有 36 个点，容易过拟合或者不收敛。
+        </li>
+        <li>
+          <strong>自由度到底是多少。</strong>
+          lme4 不报 p 值就是因为分母自由度没有唯一正确答案，
+          Satterthwaite / Kenward-Roger / 参数自助法是三种近似，小样本下结果会不一样。
+          我准备下次把这三种都跑一遍，看差异有多大。
+        </li>
+        <li>
+          <strong>收敛警告。</strong>
+          第一次跑的时候报了 <code>boundary (singular) fit</code>，
+          原因是把随机效应写得太复杂、数据撑不住。简化之后消失。
+          这种警告不要忽略。
+        </li>
+      </ul>
+
+      <h2>小结</h2>
+
+      <p>
+        重复测量数据里，个体差异不是噪声而是结构。混合模型做的事就是把
+        “谁被重复测了”这件事写进模型，代价是多出一层方差成分要估。
+        数据点少的时候，少加随机斜率、只用随机截距通常更稳妥。
+      </p>
+
+    </div>
+
+    <div class="note-foot">
+      <a href="../../index.html">← 笔记索引</a>
+      <a href="#content">回到顶部</a>
+    </div>
+  </article>
+</main>
+
+<footer class="site-foot wrap-note">
+  <span>© 2026 刘铭哲</span>
+  <span class="mono">notebooks</span>
+</footer>
+
+<script src="../../notes.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

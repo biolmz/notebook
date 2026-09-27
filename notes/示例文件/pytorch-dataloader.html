@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PyTorch Dataset 与 DataLoader 拆解 · 笔记</title>
+<meta name="description" content="手写一个 Dataset 子类，把 __getitem__、collate_fn、num_workers 三处逐个试出来。">
+<meta name="color-scheme" content="light dark">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23F5F6F4'/%3E%3Crect x='7' y='7' width='4' height='18' rx='1' fill='%233D8F5E'/%3E%3Crect x='14' y='7' width='4' height='11' rx='1' fill='%23C25B50'/%3E%3Crect x='21' y='7' width='4' height='15' rx='1' fill='%233E6DB5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/style.css">
+
+<script>
+  try {
+    if (localStorage.getItem('mnz-theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+
+<body class="note-page">
+<a class="skip-link" href="#content">跳到正文</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../index.html">刘铭哲 <span class="brand-en">notebooks</span></a>
+    <span class="topbar-spacer"></span>
+    <a class="topbar-link" href="../../index.html">← 笔记索引</a>
+    <button class="theme-btn" type="button" aria-label="切换深色 / 浅色" aria-pressed="false" title="切换深色 / 浅色">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>
+      </svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main class="wrap-note" id="content">
+  <article>
+    <div class="note-head">
+      <h1>PyTorch Dataset 与 DataLoader 拆解</h1>
+      <div class="note-meta">
+        <span class="date">2025-11-08</span>
+        <span class="topic" data-topic="机器学习"><i></i>机器学习</span>
+        <span class="tags">PyTorch，数据管道</span>
+      </div>
+      <div class="note-rule"></div>
+    </div>
+
+    <div class="prose">
+
+      <p>
+        看教程的时候觉得 Dataset 和 DataLoader 很好懂，一上手就卡在三处：
+        <code>__getitem__</code> 到底该返回什么、<code>collate_fn</code> 什么时候要自己写、
+        <code>num_workers</code> 为什么在 Windows 上会挂。这篇把这三处逐个试一遍。
+      </p>
+
+      <h2>最小可用的 Dataset</h2>
+
+      <p>
+        Dataset 只用满足两件事：<code>__len__</code> 给出长度，
+        <code>__getitem__</code> 给出第 i 个样本。返回什么完全由你定，
+        关键是后面 collate 那一步能不能把一列样本拼成一个 batch。
+      </p>
+
+      <div class="nb-cell nb-in">
+        <div class="nb-prompt">In [3]</div>
+        <div class="nb-body">
+          <pre class="nb-code"><code><span class="tok-k">import</span> torch
+<span class="tok-k">from</span> torch.utils.data <span class="tok-k">import</span> Dataset, DataLoader
+
+<span class="tok-k">class</span> <span class="tok-n">PeptideDataset</span><span class="tok-o">(</span>Dataset<span class="tok-o">):</span>
+    <span class="tok-k">def</span> <span class="tok-n">__init__</span><span class="tok-o">(</span>self, seqs, labels<span class="tok-o">):</span>
+        self<span class="tok-o">.</span>seqs <span class="tok-o">=</span> seqs
+        self<span class="tok-o">.</span>labels <span class="tok-o">=</span> labels
+
+    <span class="tok-k">def</span> <span class="tok-n">__len__</span><span class="tok-o">(</span>self<span class="tok-o">):</span>
+        <span class="tok-k">return</span> <span class="tok-k">len</span><span class="tok-o">(</span>self<span class="tok-o">.</span>seqs<span class="tok-o">)</span>
+
+    <span class="tok-k">def</span> <span class="tok-n">__getitem__</span><span class="tok-o">(</span>self, i<span class="tok-o">):</span>
+        <span class="tok-c"># 这里只做“取一条”，不做 padding、不做转 tensor</span>
+        <span class="tok-k">return</span> self<span class="tok-o">.</span>seqs<span class="tok-o">[</span>i<span class="tok-o">]</span>, self<span class="tok-o">.</span>labels<span class="tok-o">[</span>i<span class="tok-o">]</span></code></pre>
+        </div>
+      </div>
+
+      <div class="nb-cell nb-out">
+        <div class="nb-prompt">Out[3]</div>
+        <div class="nb-body">
+          <pre class="nb-out">&gt;&gt;&gt; ds = PeptideDataset(["ACDEF", "GGGK"], [1, 0])
+&gt;&gt;&gt; len(ds), ds[0]
+(2, ('ACDEF', 1))</pre>
+        </div>
+      </div>
+
+      <h2>默认 collate 能拼什么</h2>
+
+      <p>
+        DataLoader 拿到一批样本后，默认会调用 <code>torch.utils.data.default_collate</code>：
+        数字和等长 tensor 会直接堆成 batch，等长序列转成「一批字符串」也能过。
+        但只要序列长度不一致，默认 collate 就会报错，因为 tensor 的每个维度必须等长。
+      </p>
+
+      <div class="nb-cell nb-in">
+        <div class="nb-prompt">In [5]</div>
+        <div class="nb-body">
+          <pre class="nb-code"><code><span class="tok-k">from</span> torch.nn.utils.rnn <span class="tok-k">import</span> pad_sequence
+
+<span class="tok-k">def</span> <span class="tok-n">collate</span><span class="tok-o">(</span>batch<span class="tok-o">):</span>
+    seqs, labels <span class="tok-o">=</span> <span class="tok-k">zip</span><span class="tok-o">(*</span>batch<span class="tok-o">)</span>
+    idx <span class="tok-o">=</span> <span class="tok-o">{</span>aa<span class="tok-o">:</span> k <span class="tok-k">for</span> k, aa <span class="tok-k">in</span> <span class="tok-k">enumerate</span><span class="tok-o">(</span><span class="tok-s">"ACDEFGHIKLMNPQRSTVWY"</span><span class="tok-o">,</span> start<span class="tok-o">=</span><span class="tok-n">1</span><span class="tok-o">)}</span>  <span class="tok-c"># 0 留给 padding</span>
+    tensors <span class="tok-o">=</span> <span class="tok-o">[</span>torch<span class="tok-o">.</span>tensor<span class="tok-o">([</span>idx<span class="tok-o">[</span>aa<span class="tok-o">]</span> <span class="tok-k">for</span> aa <span class="tok-k">in</span> s<span class="tok-o">])</span> <span class="tok-k">for</span> s <span class="tok-k">in</span> seqs<span class="tok-o">]</span>
+    x <span class="tok-o">=</span> pad_sequence<span class="tok-o">(</span>tensors, batch_first<span class="tok-o">=</span><span class="tok-k">True</span>, padding_value<span class="tok-o">=</span><span class="tok-n">0</span><span class="tok-o">)</span>
+    <span class="tok-k">return</span> x, torch<span class="tok-o">.</span>tensor<span class="tok-o">(</span>labels<span class="tok-o">)</span>
+
+loader <span class="tok-o">=</span> DataLoader<span class="tok-o">(</span>ds, batch_size<span class="tok-o">=</span><span class="tok-n">2</span>, shuffle<span class="tok-o">=</span><span class="tok-k">True</span>, collate_fn<span class="tok-o">=</span>collate<span class="tok-o">)</span>
+x, y <span class="tok-o">=</span> <span class="tok-k">next</span><span class="tok-o">(</span><span class="tok-k">iter</span><span class="tok-o">(</span>loader<span class="tok-o">))</span>
+<span class="tok-k">print</span><span class="tok-o">(</span>x<span class="tok-o">.</span>shape, x<span class="tok-o">.</span>dtype, y<span class="tok-o">)</span></code></pre>
+        </div>
+      </div>
+
+      <div class="nb-cell nb-out">
+        <div class="nb-prompt">Out[5]</div>
+        <div class="nb-body">
+          <pre class="nb-out">torch.Size([2, 5]) torch.int64 tensor([1, 0])</pre>
+        </div>
+      </div>
+
+      <p>
+        这里有个容易忘的配套步骤：padding 到 0 之后，
+        <code>nn.Embedding</code> 要设 <code>padding_idx=0</code>，
+        否则 pad 出来的位置也在更新梯度，还会污染后续的 mean pooling。
+      </p>
+
+      <h2>num_workers 的两个坑</h2>
+
+      <table>
+        <thead>
+          <tr><th>现象</th><th>原因</th><th>处理</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Windows 上 <code>num_workers &gt; 0</code> 直接崩</td>
+            <td>子进程用 spawn 方式启动，会重新 import 主模块</td>
+            <td>训练代码写在 <code>if __name__ == "__main__":</code> 里面</td>
+          </tr>
+          <tr>
+            <td>多个 worker 取到重复的样本</td>
+            <td>每个 worker 各自有自己的随机数状态</td>
+            <td>在 Dataset 里用 <code>torch.initial_seed()</code> 派生种子，别用全局 <code>random</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="nb-cell nb-in">
+        <div class="nb-prompt">In [9]</div>
+        <div class="nb-body">
+          <pre class="nb-code"><code><span class="tok-k">if</span> __name__ <span class="tok-o">==</span> <span class="tok-s">"__main__"</span><span class="tok-o">:</span>            <span class="tok-c"># Windows 上必须这样包起来</span>
+    loader <span class="tok-o">=</span> DataLoader<span class="tok-o">(</span>ds, batch_size<span class="tok-o">=</span><span class="tok-n">64</span>, shuffle<span class="tok-o">=</span><span class="tok-k">True</span>,
+                        num_workers<span class="tok-o">=</span><span class="tok-n">4</span>, pin_memory<span class="tok-o">=</span><span class="tok-k">True</span>,
+                        persistent_workers<span class="tok-o">=</span><span class="tok-k">True</span><span class="tok-o">)</span>
+    <span class="tok-k">for</span> epoch <span class="tok-k">in</span> <span class="tok-k">range</span><span class="tok-o">(</span><span class="tok-n">3</span><span class="tok-o">):</span>
+        <span class="tok-k">for</span> x, y <span class="tok-k">in</span> loader<span class="tok-o">:</span>
+            <span class="tok-k">pass</span>                          <span class="tok-c"># 先只测数据管道，不接模型</span></code></pre>
+        </div>
+      </div>
+
+      <p>
+        实测下来，这个数据集（2 万条肽、平均长度 12）在 <code>num_workers=0</code> 时
+        一个 epoch 大概 1.8 s，<code>num_workers=4</code> 降到 0.6 s，
+        再往上加收益就不明显了 —— 瓶颈已经不在读数据上。
+      </p>
+
+      <blockquote>
+        <p>调数据管道的时候先单独跑 DataLoader，不接模型。这样测出来的时间才是数据管道本身的开销。</p>
+      </blockquote>
+
+      <h2>小结</h2>
+
+      <ul>
+        <li><code>__getitem__</code> 只管取一条，拼接逻辑放 <code>collate_fn</code>，两件事别混在一起。</li>
+        <li>变长序列必须自己写 collate，顺手把 <code>padding_idx</code> 设好。</li>
+        <li>Windows 上用多进程，训练入口一定要包在 <code>if __name__ == "__main__":</code> 里。</li>
+      </ul>
+
+    </div>
+
+    <div class="note-foot">
+      <a href="../../index.html">← 笔记索引</a>
+      <a href="#content">回到顶部</a>
+    </div>
+  </article>
+</main>
+
+<footer class="site-foot wrap-note">
+  <span>© 2026 刘铭哲</span>
+  <span class="mono">notebooks</span>
+</footer>
+
+<script src="../../notes.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

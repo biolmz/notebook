@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>用 BLAST 找 SARS-CoV-2 刺突蛋白的近缘序列 · 笔记</title>
+<meta name="description" content="从 NCBI 取刺突蛋白序列，跑 blastp 找同源序列，看保守区大致落在哪。">
+<meta name="color-scheme" content="light dark">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23F5F6F4'/%3E%3Crect x='7' y='7' width='4' height='18' rx='1' fill='%233D8F5E'/%3E%3Crect x='14' y='7' width='4' height='11' rx='1' fill='%23C25B50'/%3E%3Crect x='21' y='7' width='4' height='15' rx='1' fill='%233E6DB5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/style.css">
+
+<script>
+  try {
+    if (localStorage.getItem('mnz-theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+
+<body class="note-page">
+<a class="skip-link" href="#content">跳到正文</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../index.html">刘铭哲 <span class="brand-en">notebooks</span></a>
+    <span class="topbar-spacer"></span>
+    <a class="topbar-link" href="../../index.html">← 笔记索引</a>
+    <button class="theme-btn" type="button" aria-label="切换深色 / 浅色" aria-pressed="false" title="切换深色 / 浅色">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>
+      </svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main class="wrap-note" id="content">
+  <article>
+    <div class="note-head">
+      <h1>用 BLAST 找 SARS-CoV-2 刺突蛋白的近缘序列</h1>
+      <div class="note-meta">
+        <span class="date">2026-07-03</span>
+        <span class="topic" data-topic="序列分析"><i></i>序列分析</span>
+        <span class="tags">BLAST，同源比对，保守区</span>
+      </div>
+      <div class="note-rule"></div>
+    </div>
+
+    <div class="prose">
+
+      <p>
+        目的很简单：拿着 SARS-CoV-2 的刺突蛋白（spike, S 蛋白）序列去库里找近缘序列，
+        看看一条 1273 个氨基酸的蛋白，哪些区段换个物种还能对上、哪些区段一直在变。
+        用 <code>blastp</code> 而不是核酸比对，因为氨基酸序列保守性更能反映结构约束。
+      </p>
+
+      <h2>取序列</h2>
+
+      <div class="nb-cell nb-in">
+        <div class="nb-prompt">In [2]</div>
+        <div class="nb-body">
+          <pre class="nb-code"><code><span class="tok-k">from</span> Bio <span class="tok-k">import</span> Entrez, SeqIO
+
+<span class="tok-c"># Wuhan-Hu-1 的 surface glycoprotein，参考文献里的标准编号</span>
+Entrez<span class="tok-o">.</span>email <span class="tok-o">=</span> <span class="tok-s">"you@example.com"</span>
+handle <span class="tok-o">=</span> Entrez<span class="tok-o">.</span>efetch<span class="tok-o">(</span>db<span class="tok-o">=</span><span class="tok-s">"protein"</span>, id<span class="tok-o">=</span><span class="tok-s">"YP_009724390.1"</span>, rettype<span class="tok-o">=</span><span class="tok-s">"fasta"</span>, retmode<span class="tok-o">=</span><span class="tok-s">"text"</span><span class="tok-o">)</span>
+SeqIO<span class="tok-o">.</span>write<span class="tok-o">(</span>handle, <span class="tok-s">"spike.faa"</span>, <span class="tok-s">"fasta"</span><span class="tok-o">)</span>
+
+rec <span class="tok-o">=</span> SeqIO<span class="tok-o">.</span>read<span class="tok-o">(</span><span class="tok-s">"spike.faa"</span>, <span class="tok-s">"fasta"</span><span class="tok-o">)</span>
+<span class="tok-k">print</span><span class="tok-o">(</span>rec<span class="tok-o">.</span>id, <span class="tok-k">len</span><span class="tok-o">(</span>rec<span class="tok-o">.</span>seq<span class="tok-o">)</span><span class="tok-o">)</span></code></pre>
+        </div>
+      </div>
+
+      <div class="nb-cell nb-out">
+        <div class="nb-prompt">Out[2]</div>
+        <div class="nb-body">
+          <pre class="nb-out">YP_009724390.1 1273</pre>
+        </div>
+      </div>
+
+      <h2>建库、跑 blastp</h2>
+
+      <p>
+        先在本地建库（<code>makeblastdb</code>），再比对。<code>-outfmt 6</code> 是 tabular 格式，
+        一行一条 hit，方便直接读进 pandas；默认的成对比对输出人眼看一两条还行，多了没法处理。
+      </p>
+
+      <div class="nb-cell nb-in">
+        <div class="nb-prompt">In [3]</div>
+        <div class="nb-body">
+          <pre class="nb-code"><code><span class="tok-c"># 库用 Swiss-Prot 的蛋白序列（reviewed，冗余少，注释干净）</span>
+<span class="tok-k">conda</span> install <span class="tok-o">-c</span> bioconda blast <span class="tok-o">-y</span>
+makeblastdb <span class="tok-o">-in</span> uniprot_sprot.fasta <span class="tok-o">-dbtype</span> prot <span class="tok-o">-out</span> swissprot
+
+<span class="tok-c"># -evalue 1e-3 先放宽，看有多少条能进来，后面再收</span>
+blastp <span class="tok-o">-query</span> spike.faa <span class="tok-o">-db</span> swissprot \
+       <span class="tok-o">-outfmt</span> <span class="tok-s">"6 qseqid sseqid pident length qcovhsp evalue bitscore"</span> \
+       <span class="tok-o">-evalue</span> 1e-3 <span class="tok-o">-num_threads</span> 8 <span class="tok-o">-out</span> spike_hits.tsv</code></pre>
+        </div>
+      </div>
+
+      <div class="nb-cell nb-in">
+        <div class="nb-prompt">In [4]</div>
+        <div class="nb-body">
+          <pre class="nb-code"><code><span class="tok-k">import</span> pandas <span class="tok-k">as</span> pd
+
+cols <span class="tok-o">=</span> <span class="tok-o">[</span><span class="tok-s">"qseqid"</span>, <span class="tok-s">"sseqid"</span>, <span class="tok-s">"pident"</span>, <span class="tok-s">"length"</span>, <span class="tok-s">"qcov"</span>, <span class="tok-s">"evalue"</span>, <span class="tok-s">"bits"</span><span class="tok-o">]</span>
+hits <span class="tok-o">=</span> pd<span class="tok-o">.</span>read_csv<span class="tok-o">(</span><span class="tok-s">"spike_hits.tsv"</span>, sep<span class="tok-o">=</span><span class="tok-s">"\t"</span>, names<span class="tok-o">=</span>cols<span class="tok-o">)</span>
+hits<span class="tok-o">.</span>sort_values<span class="tok-o">(</span><span class="tok-s">"bits"</span>, ascending<span class="tok-o">=</span><span class="tok-k">False</span><span class="tok-o">)</span><span class="tok-o">.</span>head<span class="tok-o">(</span>8<span class="tok-o">)</span></code></pre>
+        </div>
+      </div>
+
+      <div class="nb-cell nb-out">
+        <div class="nb-prompt">Out[4]</div>
+        <div class="nb-body">
+          <pre class="nb-out">                  sseqid  pident  length  qcov       evalue     bits
+6    sp|A0A6B9WIA4|SPIKE_BAT 96.9    1270   100     0.0       2671.0
+23   sp|P59594|SPIKE_CVHSA   76.1    1136    95     0.0       1612.0
+41   sp|K9N5Q8|SPIKE_MERSC   34.3     486    38    3e-61       229.0
+...</pre>
+        </div>
+      </div>
+
+      <h2>怎么读这个结果</h2>
+
+      <p>
+        第一行是蝙蝠冠状病毒的 S 蛋白，全长覆盖、identity 约 97%，说明整条蛋白在近缘种里
+        基本是同源的。往下比重掉得很快：SARS-CoV 约 76%，再往后 MERS 的 identity 只剩三分之一左右，
+        而且 query coverage 只有 38% —— 这类 hit 只在某个保守区段对得上，不能按“整条同源”来解释。
+      </p>
+
+      <p>
+        把 <code>qcov</code> 和 <code>pident</code> 一起看，比只看 E-value 稳得多：E-value 会随库大小变化，
+        coverage 低的高 identity hit 往往是某个结构域碰巧相似。我这轮把 coverage &lt; 70% 的都单独放开，
+        不然按 bits 排序会把它们混进“近缘”里。
+      </p>
+
+      <table>
+        <thead>
+          <tr><th>筛选条件</th><th>剩下多少条</th><th>用来干什么</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>E-value &lt; 1e-3</td><td>约 300 条</td><td>先看全局，别急着收</td></tr>
+          <tr><td>再加 coverage ≥ 70%</td><td>约 40 条</td><td>真正的全长同源序列</td></tr>
+          <tr><td>再加 identity ≥ 60%</td><td>十来条</td><td>拿去做多序列比对、建树</td></tr>
+        </tbody>
+      </table>
+
+      <h2>踩过的坑</h2>
+
+      <ul>
+        <li>
+          忘了加 <code>-outfmt 6</code>，默认输出里有大量空行和注释行，
+          直接 <code>read_csv</code> 会报列数不匹配。
+        </li>
+        <li>
+          low-complexity 掩码默认是开的（<code>-seg yes</code>）。刺突蛋白里有一些低复杂度区段，
+          掩掉之后这些区段的 hit 会消失，看起来像“这里不保守”，其实是没比。
+          我这次保留默认，但知道这件事，因为研究的区段不是那里。
+        </li>
+        <li>
+          用 <code>num_threads</code> 时线程数别超过物理核，
+          在实验室服务器上开到 32 反而比 8 慢。
+        </li>
+      </ul>
+
+      <h2>小结</h2>
+
+      <p>
+        BLAST 在这里的作用是给出“哪些序列值得继续做比对”的候选，而不是结论。
+        identity / coverage 双阈值筛完之后，下一步应该做多序列比对（MAFFT）和建树，
+        那一步才是判断分化关系的地方。下次补上。
+      </p>
+
+    </div>
+
+    <div class="note-foot">
+      <a href="../../index.html">← 笔记索引</a>
+      <a href="#content">回到顶部</a>
+    </div>
+  </article>
+</main>
+
+<footer class="site-foot wrap-note">
+  <span>© 2026 刘铭哲</span>
+  <span class="mono">notebooks</span>
+</footer>
+
+<script src="../../notes.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

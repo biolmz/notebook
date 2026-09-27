@@ -1,0 +1,149 @@
+<!doctype html>
+<!-- ============================================================================
+     笔记页模板 —— 手写一篇笔记就从复制这个文件开始。
+     复制成 notes/你的文件名.html，然后把下面标了「改这里」的地方换掉。
+
+     注意：这个文件现在存在 notes/示例文件/ 里存档，所以路径写的是 ../../assets/。
+     复制到 notes/ 之后要把这些 ../../ 改回 ../（否则样式和链接都会失效）。
+
+     注意三处相对路径：样式和脚本都是 ../../assets/...，回首页是 ../../index.html。
+     写完之后，还要去 notes.js 的 NOTES 里加一条，首页索引才会出现它。
+     （或者用 python tools/add_note.py 导入 Jupyter 导出的 HTML，那样索引会自动加上）
+     ========================================================================= -->
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- 改这里：标题 -->
+<title>笔记标题 · 笔记</title>
+<meta name="description" content="一句话说明这篇在做什么">
+<meta name="color-scheme" content="light dark">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23F5F6F4'/%3E%3Crect x='7' y='7' width='4' height='18' rx='1' fill='%233D8F5E'/%3E%3Crect x='14' y='7' width='4' height='11' rx='1' fill='%23C25B50'/%3E%3Crect x='21' y='7' width='4' height='15' rx='1' fill='%233E6DB5'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="../../assets/style.css">
+
+<script>
+  try {
+    if (localStorage.getItem('mnz-theme') === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  } catch (e) {}
+</script>
+</head>
+
+<body class="note-page">
+<a class="skip-link" href="#content">跳到正文</a>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="../../index.html">刘铭哲 <span class="brand-en">notebooks</span></a>
+    <span class="topbar-spacer"></span>
+    <a class="topbar-link" href="../../index.html">← 笔记索引</a>
+    <button class="theme-btn" type="button" aria-label="切换深色 / 浅色" aria-pressed="false" title="切换深色 / 浅色">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>
+      </svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<main class="wrap-note" id="content">
+  <article>
+    <div class="note-head">
+      <!-- 改这里：标题、日期、方向、标签 -->
+      <h1>笔记标题写在这里</h1>
+      <div class="note-meta">
+        <span class="date">2026-01-01</span>
+        <!-- data-topic 的值要在 notes.js 的 TOPICS 里有，颜色才会对上 -->
+        <span class="topic" data-topic="单细胞"><i></i>单细胞</span>
+        <span class="tags">Scanpy，聚类</span>
+      </div>
+
+      <!-- 有源 notebook 就留着，没有就整段删掉 -->
+      <div class="note-actions">
+        <a href="../../notebooks/文件名.ipynb" download>下载源 notebook</a>
+      </div>
+
+      <div class="note-rule"></div>
+    </div>
+
+    <div class="prose">
+
+      <!-- 普通正文：标题、段落、列表、引用、表格、链接都能直接写 -->
+      <p>
+        第一段说清楚这篇在做什么、数据从哪来。中文为主，专业术语保留英文，
+        例如 <code>sc.pp.normalize_total</code>、<em>batch effect</em>。
+      </p>
+
+      <h2>一个小节</h2>
+
+      <!-- 代码单元格：一个 .nb-cell 里，左边是提示符，右边是代码或输出。
+           In [n] 的 n 照抄你 notebook 里的执行序号，方便和原 notebook 对上。 -->
+      <div class="nb-cell nb-in">
+        <div class="nb-prompt">In [1]</div>
+        <div class="nb-body">
+          <pre class="nb-code"><code><span class="tok-k">import</span> scanpy <span class="tok-k">as</span> sc
+<span class="tok-c"># 这行在试什么，直接写在代码旁边</span>
+adata <span class="tok-o">=</span> sc<span class="tok-o">.</span>read_10x_mtx<span class="tok-o">(</span><span class="tok-s">"data/filtered_feature_bc_matrix"</span><span class="tok-o">)</span>
+adata</code></pre>
+        </div>
+      </div>
+
+      <!-- 输出单元格：用 .nb-out，提示符用 Out [n] -->
+      <div class="nb-cell nb-out">
+        <div class="nb-prompt">Out[1]</div>
+        <div class="nb-body">
+          <pre class="nb-out">AnnData object with n_obs × n_vars = 2700 × 32738</pre>
+        </div>
+      </div>
+
+      <!-- 表格 -->
+      <table>
+        <thead>
+          <tr><th>参数</th><th>取值</th><th>为什么</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>min_genes</td><td>200</td><td>低于这个数基本是空液滴</td></tr>
+          <tr><td>pct_counts_mt</td><td>&lt; 20</td><td>线粒体比例高说明细胞已经破了</td></tr>
+        </tbody>
+      </table>
+
+      <!-- 图：把图片放进 notes/ 里一起引用，或者直接用导出文件里的 base64 -->
+      <figure>
+        <img src="图.png" alt="说明这张图在讲什么">
+        <figcaption>图 1　UMAP 按 Leiden 聚类上色，簇 3 和簇 7 分不开，怀疑是同一类细胞的两个状态。</figcaption>
+      </figure>
+
+      <blockquote>
+        <p>没想通的地方、下次要试的做法，写在引用块里，回头看最有用。</p>
+      </blockquote>
+
+      <h2>小结</h2>
+      <ul>
+        <li>结论一：……</li>
+        <li>结论二：……</li>
+      </ul>
+
+    </div>
+
+    <div class="note-foot">
+      <a href="../../index.html">← 笔记索引</a>
+      <a href="#content">回到顶部</a>
+    </div>
+  </article>
+</main>
+
+<footer class="site-foot wrap-note">
+  <span>© 2026 刘铭哲</span>
+  <span class="mono">notebooks</span>
+</footer>
+
+<script src="../../notes.js"></script>
+<script src="../../assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,873 @@
+/* ============================================================================
+   刘铭哲 · Notebooks —— 全站样式
+   浅色为主，右上角开关可切深色（存在 localStorage，首次访问一律浅色）
+
+   改配色：只动下面 :root 里的变量；深色模式在 [data-theme="dark"] 里覆盖同名变量。
+   改字体：--serif 管标题，--sans 管正文，--mono 管代码 / 日期 / notebook 提示符。
+   全部用系统自带字体，不请求任何外部资源（国内访问不受影响）。
+   ========================================================================= */
+
+:root {
+  /* 纸面：微微偏绿的冷白，不是常见的米黄 */
+  --bg:        #F5F6F4;
+  --bg-elev:   #FFFFFF;
+  --bg-sunk:   #ECEEE9;
+
+  /* 文字：三级层次（最小那级也保证 4.5:1 以上对比度） */
+  --ink:       #1A1D1A;
+  --ink-2:     #4A514B;
+  --ink-3:     #6A716B;
+
+  /* 线 */
+  --rule:      #DFE2DD;
+  --rule-soft: #E9EBE6;
+
+  /* 唯一强调色：深松绿 */
+  --accent:      #1E6F4B;
+  --accent-soft: #E3EFE8;
+
+  /* 四个方向的主题色，取自 A / T / C / G 四个碱基色，在 assets/notes.js 里指派 */
+  --t-a: #3D8F5E;
+  --t-t: #C25B50;
+  --t-c: #3E6DB5;
+  --t-g: #AE8226;
+
+  /* 字体 */
+  --serif: Georgia, "Source Han Serif SC", "Noto Serif SC", "Songti SC", SimSun, serif;
+  --sans:  "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
+           "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB",
+           system-ui, sans-serif;
+  --mono:  "Cascadia Mono", "Cascadia Code", Consolas, "SF Mono", "JetBrains Mono",
+           ui-monospace, Menlo, monospace;
+
+  /* 版式尺度 */
+  --w-index: 1000px;
+  --w-note:  740px;
+  --pad:     26px;
+  --topbar:  50px;
+
+  --radius: 3px;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:        #151816;
+  --bg-elev:   #1C211E;
+  --bg-sunk:   #212721;
+
+  --ink:       #E7EAE5;
+  --ink-2:     #A7AEA8;
+  --ink-3:     #7E8680;
+
+  --rule:      #2B312C;
+  --rule-soft: #232823;
+
+  --accent:      #6FBE93;
+  --accent-soft: #1E2A23;
+
+  --t-a: #6BC08C;
+  --t-t: #E0857A;
+  --t-c: #7FA9E6;
+  --t-g: #DCB25C;
+}
+
+/* ---------------------------------------------------------------- 基础 ---- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  color-scheme: light;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.75;
+  font-feature-settings: "kern" 1;
+  text-rendering: optimizeLegibility;
+}
+
+::selection { background: var(--accent-soft); color: var(--ink); }
+
+a { color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+img, svg, video { max-width: 100%; height: auto; }
+
+hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5em 0; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.wrap { max-width: var(--w-index); margin: 0 auto; padding: 0 var(--pad); }
+
+/* 笔记页正文比首页索引窄，单独一个容器 */
+.wrap-note {
+  max-width: calc(var(--w-note) + var(--pad) * 2);
+  margin: 0 auto;
+  padding: 0 var(--pad);
+}
+
+/* nbconvert 等导出文件自带的样式不许改掉站点的底色和字体 */
+body.note-page {
+  background: var(--bg) !important;
+  color: var(--ink) !important;
+  font-family: var(--sans) !important;
+}
+
+.skip-link {
+  position: absolute; left: -9999px; top: 0; z-index: 99;
+  background: var(--bg-elev); color: var(--ink);
+  padding: 10px 16px; border: 1px solid var(--rule);
+}
+.skip-link:focus { left: 12px; top: 8px; }
+
+/* ------------------------------------------------------------- 顶栏 ----- */
+
+.topbar {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--bg);
+  border-bottom: 1px solid var(--rule);
+}
+@supports (backdrop-filter: blur(6px)) {
+  .topbar {
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(10px) saturate(1.4);
+  }
+}
+
+.topbar-inner {
+  max-width: var(--w-index); margin: 0 auto;
+  padding: 0 var(--pad);
+  height: var(--topbar);
+  display: flex; align-items: center; gap: 22px;
+}
+
+.brand {
+  font-family: var(--serif);
+  font-size: 16.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  display: inline-flex; align-items: baseline; gap: 7px;
+  white-space: nowrap;
+}
+.brand .brand-en {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+}
+
+.topbar-spacer { flex: 1; }
+
+.topbar-link {
+  font-size: 14px;
+  color: var(--ink-2);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.topbar-link:hover { color: var(--accent); }
+
+.theme-btn {
+  width: 32px; height: 32px;
+  display: inline-grid; place-items: center;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: var(--ink-2);
+  cursor: pointer;
+  padding: 0;
+}
+.theme-btn:hover { color: var(--accent); border-color: var(--accent); }
+.theme-btn svg { width: 15px; height: 15px; display: block; }
+.theme-btn .icon-moon { display: block; }
+.theme-btn .icon-sun  { display: none; }
+[data-theme="dark"] .theme-btn .icon-moon { display: none; }
+[data-theme="dark"] .theme-btn .icon-sun  { display: block; }
+
+/* --------------------------------------------------------- 首页 · 首屏 -- */
+
+/* 注意：这几个元素同时带 .wrap，所以只能写 padding-top/bottom，
+   一旦用 padding 简写就会把 .wrap 的左右内边距清掉，和顶栏错开 26px */
+.hero { padding-top: 68px; padding-bottom: 34px; }
+
+.hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(30px, 4.2vw, 44px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.018em;
+  margin: 0 0 20px;
+  max-width: 22ch;
+}
+
+.hero p {
+  margin: 0;
+  max-width: 48ch;
+  font-size: 16.5px;
+  line-height: 1.9;
+  color: var(--ink-2);
+}
+
+/* 首屏右下角那行统计，用等宽字体，和索引里的日期同一套 */
+.hero-facts {
+  margin-top: 30px;
+  display: flex; flex-wrap: wrap; align-items: baseline;
+  gap: 8px 22px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink-3);
+  letter-spacing: 0.02em;
+}
+.hero-facts b { font-weight: 600; color: var(--ink-2); }
+
+/* ------------------------------------------------------- 首页 · 工具条 -- */
+
+.toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 10px;
+  padding: 26px 0 18px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.chip {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 3px 9px 4px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.chip .dot {
+  width: 8px; height: 8px; border-radius: 1px;
+  background: var(--tc, var(--ink-3));
+  flex: none;
+}
+.chip .n {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.chip:hover { color: var(--ink); background: var(--bg-sunk); }
+.chip[aria-pressed="true"] {
+  color: var(--ink);
+  border-color: var(--rule);
+  background: var(--bg-elev);
+}
+.chip[aria-pressed="true"] .dot { background: var(--tc, var(--accent)); }
+
+.search {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  padding: 0 10px;
+  height: 32px;
+  min-width: 200px;
+}
+.search:focus-within { border-color: var(--accent); }
+.search svg { width: 13px; height: 13px; color: var(--ink-3); flex: none; }
+.search input {
+  border: 0; outline: 0; background: transparent;
+  font-family: var(--sans); font-size: 14px; color: var(--ink);
+  width: 100%; min-width: 60px; padding: 0;
+}
+.search input::placeholder { color: var(--ink-3); }
+.search kbd {
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  border: 1px solid var(--rule); border-radius: 2px;
+  padding: 0 4px; line-height: 1.5;
+}
+.search input:not(:placeholder-shown) ~ kbd { display: none; }
+.toolbar-count {
+  font-family: var(--mono); font-size: 12px; color: var(--ink-3);
+  letter-spacing: 0.02em; margin-left: 2px;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 5px 4px; }
+
+.hero-facts a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid var(--rule);
+}
+.hero-facts a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.empty p { margin: 0; }
+
+/* ----------------------------------------------------- 首页 · 笔记索引 -- */
+
+.log { padding-bottom: 10px; }
+
+.log-year {
+  display: flex; align-items: center; gap: 14px;
+  padding: 34px 0 6px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink-3);
+  letter-spacing: 0.06em;
+}
+.log-year::after {
+  content: ""; flex: 1; height: 1px; background: var(--rule-soft);
+}
+
+/* 每一条笔记 = 一格「日志行」：左边细色条 + 日期栏 + 标题 + 右侧标签 */
+.row {
+  display: grid;
+  grid-template-columns: 4px 84px minmax(0, 1fr) 168px;
+  column-gap: 20px;
+  align-items: start;
+  padding: 17px 0 18px;
+  border-bottom: 1px solid var(--rule-soft);
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+}
+
+.tick {
+  width: 4px; height: 30px;
+  margin-top: 5px;
+  border-radius: 1px;
+  background: var(--tc, var(--ink-3));
+  opacity: 0.4;
+  transition: opacity 140ms ease-out, height 140ms ease-out;
+}
+.row:hover .tick,
+.row:focus-visible .tick { opacity: 1; height: 44px; }
+
+.gutter { font-family: var(--mono); padding-top: 4px; }
+.gutter .date {
+  display: block; font-size: 13px; color: var(--ink-2);
+  letter-spacing: 0.01em;
+}
+.gutter .cells {
+  display: block; font-size: 11.5px; color: var(--ink-3); margin-top: 3px;
+}
+
+.row .title {
+  font-family: var(--serif);
+  font-size: 19.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: -0.008em;
+  display: block;
+}
+.row:hover .title,
+.row:focus-visible .title {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--accent);
+}
+.row .summary {
+  display: block;
+  margin-top: 5px;
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: var(--ink-2);
+  max-width: 62ch;
+}
+
+.row .meta {
+  text-align: right;
+  padding-top: 5px;
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.7;
+}
+.row .meta .topic {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--ink-2);
+}
+.row .meta .topic i {
+  width: 8px; height: 8px; border-radius: 1px;
+  background: var(--tc, var(--ink-3));
+  display: inline-block; flex: none;
+}
+.row .meta .tags { display: block; margin-top: 3px; }
+.row .pending {
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink-3);
+}
+
+.row.is-pending { cursor: default; }
+.row.is-pending .title { color: var(--ink-2); }
+
+.empty {
+  padding: 54px 0 60px;
+  color: var(--ink-2);
+  font-size: 15px;
+}
+.empty code {
+  font-family: var(--mono); font-size: 13px;
+  background: var(--bg-sunk); padding: 1px 5px; border-radius: 2px;
+}
+
+/* 逐行浮现，模拟一次 notebook 顺序执行；只出现一次，之后不再有任何动效 */
+@keyframes row-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.row { animation: row-in 300ms ease-out both; animation-delay: var(--d, 0ms); }
+.log-year { animation: row-in 300ms ease-out both; animation-delay: var(--d, 0ms); }
+/* 首次渲染之后（筛选、搜索）不再重播，立刻出结果 */
+.log.instant .row,
+.log.instant .log-year { animation: none; }
+
+/* -------------------------------------------------------- 首页 · 关于 -- */
+
+.about {
+  padding-top: 60px;
+  padding-bottom: 30px;
+  border-top: 1px solid var(--rule);
+  margin-top: 40px;
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  column-gap: 30px;
+}
+.about h2 {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 4px 0 0;
+}
+.about p { margin: 0 0 14px; font-size: 15px; line-height: 1.85; color: var(--ink-2); max-width: 60ch; }
+.about p:last-child { margin-bottom: 0; }
+.about a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
+.about a:hover { border-bottom-color: var(--accent); }
+
+/* -------------------------------------------------------------- 页脚 --- */
+
+.site-foot {
+  margin-top: 70px;
+  border-top: 1px solid var(--rule);
+  padding-top: 22px;
+  padding-bottom: 40px;
+  font-size: 13px;
+  color: var(--ink-3);
+  display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline;
+}
+.site-foot .mono { font-family: var(--mono); font-size: 12px; }
+
+/* ------------------------------------------------------- 笔记页 · 头部 -- */
+
+.note-head { padding: 54px 0 0; }
+
+/* 笔记页的顶栏和正文栏同宽，左右边缘才对得上 */
+body.note-page .topbar-inner {
+  max-width: calc(var(--w-note) + var(--pad) * 2);
+}
+
+.note-head h1 {
+  font-family: var(--serif);
+  font-size: clamp(27px, 3.4vw, 35px);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  margin: 0 0 16px;
+  max-width: 30ch;
+}
+
+.note-meta {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 6px 16px;
+  font-size: 13.5px;
+  color: var(--ink-3);
+}
+.note-meta .date { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); }
+.note-meta .topic { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.note-meta .topic i {
+  width: 8px; height: 8px; border-radius: 1px; background: var(--tc, var(--ink-3));
+}
+.note-meta .tags { color: var(--ink-3); }
+
+.note-actions {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  margin: 22px 0 0;
+}
+.note-actions a {
+  font-size: 13.5px;
+  text-decoration: none;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 4px 11px 5px;
+  color: var(--ink-2);
+  background: var(--bg-elev);
+}
+.note-actions a:hover { color: var(--accent); border-color: var(--accent); }
+
+.note-rule { margin: 30px 0 0; border-top: 1px solid var(--rule); }
+
+/* ------------------------------------------------------- 笔记页 · 正文 -- */
+
+.prose {
+  padding: 34px 0 20px;
+  font-size: 17px;
+  line-height: 1.9;
+  max-width: var(--w-note);
+}
+.prose > * { max-width: 100%; }
+
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+}
+.prose h2 { font-size: 23px; margin: 2.1em 0 0.6em; }
+.prose h3 { font-size: 19px; margin: 1.8em 0 0.5em; }
+.prose h4 { font-size: 16.5px; margin: 1.6em 0 0.4em; color: var(--ink-2); }
+.prose h2 + p, .prose h3 + p, .prose h4 + p { margin-top: 0; }
+
+.prose p { margin: 0 0 1.15em; }
+.prose ul, .prose ol { padding-left: 1.35em; margin: 0 0 1.15em; }
+.prose li { margin-bottom: 0.35em; }
+.prose li::marker { color: var(--ink-3); }
+
+.prose a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.prose a:hover { text-decoration-color: var(--accent); }
+
+.prose strong { font-weight: 600; }
+.prose em { font-style: italic; }
+
+.prose blockquote {
+  margin: 1.5em 0;
+  padding: 2px 0 2px 18px;
+  border-left: 2px solid var(--rule);
+  color: var(--ink-2);
+}
+.prose blockquote p:last-child { margin-bottom: 0; }
+
+.prose code {
+  font-family: var(--mono);
+  font-size: 0.875em;
+  background: var(--bg-sunk);
+  padding: 0.12em 0.4em;
+  border-radius: 2px;
+}
+
+.prose pre {
+  margin: 1.5em 0;
+  padding: 14px 16px;
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-size: 13.2px;
+  line-height: 1.7;
+}
+.prose pre code { background: transparent; padding: 0; font-size: inherit; }
+
+.prose figure { margin: 1.8em 0; }
+.prose figcaption {
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink-3);
+  margin-top: 10px;
+}
+
+.prose table {
+  width: 100%;
+  margin: 1.6em 0;
+  border-collapse: collapse;
+  font-size: 14.5px;
+}
+.prose th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--ink-3);
+  padding: 7px 12px 7px 0;
+}
+.prose td {
+  border-bottom: 1px solid var(--rule-soft);
+  padding: 7px 12px 7px 0;
+}
+.prose td:last-child, .prose th:last-child { padding-right: 0; }
+
+/* ------------------------- 正文里的 notebook 单元格（手写笔记用这套） -- */
+/* 提示符栏和首页索引左边的日期栏是同一个语言：In [n] 真的在左侧窄栏里 */
+
+.nb-cell {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  column-gap: 14px;
+  margin: 1.7em 0;
+}
+.nb-prompt {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-3);
+  text-align: right;
+  padding-top: 13px;
+  white-space: nowrap;
+}
+.nb-in .nb-prompt { color: var(--accent); }
+.nb-body { min-width: 0; }
+
+.nb-code {
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius);
+  padding: 12px 15px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 13.2px;
+  line-height: 1.72;
+  margin: 0;
+}
+.nb-code code { background: transparent; padding: 0; font-size: inherit; }
+
+.nb-out {
+  border-left: 2px solid var(--rule);
+  padding: 8px 0 8px 14px;
+  font-family: var(--mono);
+  font-size: 12.8px;
+  line-height: 1.7;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+/* 语法着色的极简版：只分「注释 / 字符串 / 关键字 / 数字」四类 */
+.tok-c { color: var(--ink-3); font-style: italic; }
+.tok-s { color: var(--t-c); }
+.tok-k { color: var(--accent); }
+.tok-n { color: var(--t-t); }
+
+/* --------------------- 嵌入 nbconvert 导出的 HTML（自动套用本站配色） -- */
+/* 用法：<div class="nb-embed"> 你导出的 HTML 的 <body> 内容 </div> */
+
+.nb-embed {
+  /* 覆盖 JupyterLab 模板（--template lab）的一批变量，让它跟着本站主题走 */
+  --jp-layout-color0: transparent;
+  --jp-layout-color1: transparent;
+  --jp-layout-color2: var(--bg-sunk);
+  --jp-layout-color3: var(--bg-sunk);
+  --jp-border-color0: var(--rule);
+  --jp-border-color1: var(--rule-soft);
+  --jp-border-color2: var(--rule-soft);
+  --jp-content-font-color0: var(--ink);
+  --jp-content-font-color1: var(--ink);
+  --jp-content-font-color2: var(--ink-2);
+  --jp-content-font-color3: var(--ink-3);
+  --jp-content-font-family: var(--sans);
+  --jp-content-font-size1: 17px;
+  --jp-content-line-height: 1.9;
+  --jp-code-font-family: var(--mono);
+  --jp-code-font-size: 13.2px;
+  --jp-code-background-color: var(--bg-sunk);
+  --jp-cell-editor-background: var(--bg-sunk);
+  --jp-cell-editor-border-color: var(--rule-soft);
+  --jp-cell-editor-box-shadow: none;
+  --jp-cell-prompt-font-family: var(--mono);
+  --jp-cell-prompt-width: 62px;
+  --jp-cell-prompt-not-active-opacity: 1;
+  --jp-cell-prompt-not-active-font-color: var(--ink-3);
+  --jp-input-active-background: transparent;
+  --jp-rendermime-table-row-background: transparent;
+  --jp-rendermime-table-row-hover-background: var(--bg-sunk);
+  --jp-toolbar-background: transparent;
+  --jp-anchor-color: var(--accent);
+  --jp-link-color: var(--accent);
+  --jp-ui-font-family: var(--sans);
+  --jp-ui-font-size1: 15px;
+
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.9;
+  color: var(--ink);
+  max-width: 100%;
+}
+
+/* 导出文件的外壳：把 JupyterLab 自己那层底色和内边距清掉 */
+.nb-embed,
+.jp-Notebook,
+.nb-embed .jp-Cell,
+.nb-embed .jp-NotebookPanel {
+  background: transparent !important;
+}
+.jp-Notebook, .nb-embed { padding: 0 !important; margin: 0 !important; }
+.nb-embed .jp-Cell { border: 0 !important; }
+.nb-embed .jp-Cell-inputWrapper,
+.nb-embed .jp-Cell-outputWrapper { overflow: visible; }
+
+.nb-embed .jp-InputArea-editor {
+  background: var(--bg-sunk) !important;
+  border: 1px solid var(--rule-soft) !important;
+  border-radius: var(--radius);
+  box-shadow: none !important;
+}
+.nb-embed .jp-InputArea-editor pre { margin: 0; }
+
+.nb-embed .jp-InputPrompt { color: var(--accent) !important; }
+.nb-embed .jp-OutputPrompt { color: var(--ink-3) !important; }
+
+.nb-embed .jp-RenderedHTMLCommon,
+.nb-embed .jp-OutputArea-output {
+  font-family: var(--sans);
+  color: var(--ink);
+}
+.nb-embed .jp-OutputArea-output pre,
+.nb-embed .jp-OutputArea-output.stream {
+  font-family: var(--mono);
+  font-size: 12.8px;
+  color: var(--ink-2);
+  background: transparent;
+}
+
+/* 经典模板（--template classic）的那套 class */
+.nb-embed .input_area,
+.nb-embed .output_area { background: transparent !important; }
+.nb-embed .input_area { border: 0 !important; }
+.nb-embed .input_area .highlight {
+  background: var(--bg-sunk);
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--radius);
+  padding: 12px 15px;
+  overflow-x: auto;
+}
+.nb-embed .output_area pre { background: transparent; }
+.nb-embed .prompt,
+.nb-embed .input_prompt,
+.nb-embed .output_prompt {
+  font-family: var(--mono) !important;
+  font-size: 12px !important;
+  color: var(--ink-3) !important;
+}
+.nb-embed .input_prompt { color: var(--accent) !important; }
+.nb-embed div.highlight { background: transparent !important; }
+.nb-embed .output_subarea { max-width: 100%; }
+.nb-embed .dataframe { font-size: 13px; }
+
+/* nbconvert 自带的图片、表格、数学公式 */
+.nb-embed img { max-width: 100%; height: auto; }.nb-embed table.dataframe { border-collapse: collapse; margin: 1.2em 0; width: auto; }
+.nb-embed table.dataframe th,
+.nb-embed table.dataframe td {
+  border-bottom: 1px solid var(--rule-soft);
+  padding: 6px 12px 6px 0;
+  text-align: right;
+}
+.nb-embed table.dataframe th:first-child,
+.nb-embed table.dataframe td:first-child { text-align: left; }
+.nb-embed .MathJax, .nb-embed .MathJax_Display { overflow-x: auto; overflow-y: hidden; }
+
+/* embed 里的标题跟本站标题同一套字体（JupyterLab 的规则更靠后，所以加 !important） */
+.nb-embed h1, .nb-embed h2, .nb-embed h3, .nb-embed h4 {
+  font-family: var(--serif) !important;
+  color: var(--ink) !important;
+  letter-spacing: -0.01em;
+}
+.nb-embed h1 { font-size: 25px !important; }
+.nb-embed h2 { font-size: 22px !important; }
+.nb-embed h3 { font-size: 18.5px !important; }
+
+/* 代码着色收成四类，和手写笔记里的 .tok-* 是同一套颜色 */
+.nb-embed .highlight .c, .nb-embed .highlight .c1, .nb-embed .highlight .cm,
+.nb-embed .highlight .cs, .nb-embed .highlight .cp { color: var(--ink-3) !important; font-style: italic; }
+.nb-embed .highlight .s, .nb-embed .highlight .s1, .nb-embed .highlight .s2,
+.nb-embed .highlight .sb, .nb-embed .highlight .sd, .nb-embed .highlight .se { color: var(--t-c) !important; }
+.nb-embed .highlight .k, .nb-embed .highlight .kn, .nb-embed .highlight .kc,
+.nb-embed .highlight .kd, .nb-embed .highlight .kr, .nb-embed .highlight .ow { color: var(--accent) !important; }
+.nb-embed .highlight .m, .nb-embed .highlight .mi, .nb-embed .highlight .mf,
+.nb-embed .highlight .mh, .nb-embed .highlight .il { color: var(--t-t) !important; }
+.nb-embed .highlight .nb, .nb-embed .highlight .bp, .nb-embed .highlight .nd { color: var(--t-g) !important; }
+.nb-embed .highlight .nf, .nb-embed .highlight .fm, .nb-embed .highlight .nc { color: var(--ink) !important; }
+.nb-embed .highlight .o, .nb-embed .highlight .p, .nb-embed .highlight .n { color: var(--ink-2) !important; }
+
+/* ---------------------------------------------------- 笔记页 · 页尾 --- */
+
+.note-foot {
+  max-width: var(--w-note);
+  margin-top: 50px;
+  padding: 22px 0 0;
+  border-top: 1px solid var(--rule);
+  display: flex; flex-wrap: wrap; gap: 12px 20px;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.note-foot a { color: var(--ink-2); text-decoration: none; }
+.note-foot a:hover { color: var(--accent); }
+
+/* ---------------------------------------------------------- 响应式 ---- */
+
+@media (max-width: 860px) {
+  :root { --pad: 20px; }
+
+  .hero { padding-top: 46px; padding-bottom: 26px; }
+  .about { grid-template-columns: 1fr; row-gap: 14px; padding-top: 46px; }
+
+  /* 索引行改成块状：色条变成整行的左边线 */
+  .row {
+    display: block;
+    border-left: 3px solid var(--tc, var(--ink-3));
+    padding: 15px 0 16px 14px;
+    margin-left: 1px;
+  }
+  .tick { display: none; }
+  .gutter { padding: 0 0 6px; }
+  .gutter .date { display: inline; font-size: 12.5px; }
+  .gutter .cells { display: inline; margin: 0 0 0 10px; }
+  .row .title { font-size: 18.5px; }
+  .row .meta { text-align: left; padding-top: 8px; }
+  .row .meta .tags { display: inline; margin-left: 10px; }
+  .search { margin-left: 0; width: 100%; }
+  .toolbar { gap: 8px 6px; }
+}
+
+@media (max-width: 620px) {
+  .nb-cell { grid-template-columns: 1fr; row-gap: 4px; }
+  .nb-prompt { text-align: left; padding-top: 0; }
+  .nb-embed { --jp-cell-prompt-width: 48px; }
+  .note-head { padding-top: 38px; }
+  .prose { font-size: 16.5px; }
+}
+
+/* ------------------------------------------------------------ 打印 --- */
+
+@media print {
+  .topbar, .site-foot, .note-actions, .toolbar { display: none !important; }
+  body { background: #fff; color: #000; font-size: 11pt; }
+  .prose { max-width: none; font-size: 11pt; line-height: 1.6; }
+  .prose a { color: #000; }
+  .nb-embed, .prose pre { border-color: #ccc; }
+  .row { break-inside: avoid; }
+}
+
+/* --------------------------------------------------- 动效偏好 / 降级 -- */
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
